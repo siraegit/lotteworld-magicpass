@@ -389,64 +389,100 @@ window.buildResult = function() {
     return;
   }
 
-  // 1. 사람별 최적 패스 추천
-  let html = '<div class="result-card">';
+  // 사람별 색상/도형
+  const PERSON_COLORS = ['#534AB7','#E24B4A','#1D9E75','#E89B0F'];
+  const PERSON_SHAPES = ['●','■','▲','◆'];
+
+  // 사람별 최적 패스 추천 헤더
+  let html = '<div class="result-card" style="margin-bottom:12px;">';
   html += '<p class="result-section-title">사람별 최적 패스 추천</p>';
   for(let i=0;i<4;i++) {
     const p = sessionData[`p${i}`];
     const nm = p.name || `${i+1}번`;
     const picks = p.picks || [];
-    if(picks.length===0) {
-      html += `<div class="person-result-row">
-        <div><div class="person-result-name">${nm}</div><div class="person-result-picks">선택 없음</div></div>
-      </div>`;
-      continue;
-    }
     const scores = calcPersonPassScores(picks);
     const maxCnt = Math.max(...scores.map(s=>s.cnt));
-    const bestPasses = scores.filter(s=>s.cnt===maxCnt);
+    const bestPasses = picks.length>0 ? scores.filter(s=>s.cnt===maxCnt) : [];
     html += `<div class="person-result-row">
-      <div>
-        <div class="person-result-name">${nm}</div>
-        <div class="person-result-picks">${picks.length}개 선택</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="color:${PERSON_COLORS[i]};font-size:14px;">${PERSON_SHAPES[i]}</span>
+        <div>
+          <div class="person-result-name">${nm}</div>
+          <div class="person-result-picks">${picks.length}개 선택</div>
+        </div>
       </div>
       <div class="best-pass-row">
-        ${bestPasses.map(s=>`<span class="best-chip ${s.badgeCls}">${s.label} ${s.cnt}개</span>`).join('')}
+        ${bestPasses.length>0
+          ? bestPasses.map(s=>`<span class="best-chip ${s.badgeCls}">${s.label} ${s.cnt}개</span>`).join('')
+          : '<span style="font-size:11px;color:#bbb;">선택 없음</span>'}
       </div>
     </div>`;
   }
   html += '</div>';
 
-  // 2. 놀이기구별 희망자
-  html += '<p class="section-title" style="margin-bottom:8px;">놀이기구별 함께 탈 사람</p>';
-  html += '<div class="ride-who-list">';
-  const rideMap = {};
-  ALL_RIDES.forEach(r => { rideMap[r.name] = []; });
+  // 범례
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid #e8e8e3;border-radius:10px;">';
   for(let i=0;i<4;i++) {
-    const p = sessionData[`p${i}`];
-    const nm = p.name || `${i+1}번`;
-    (p.picks||[]).forEach(r => { if(rideMap[r]) rideMap[r].push(nm); });
+    const nm = sessionData[`p${i}`].name || `${i+1}번`;
+    html += `<span style="font-size:12px;display:flex;align-items:center;gap:4px;">
+      <span style="color:${PERSON_COLORS[i]};font-size:13px;">${PERSON_SHAPES[i]}</span>${nm}
+    </span>`;
   }
-  const rideEntries = ALL_RIDES.filter(r => rideMap[r.name].length > 0);
-  if(rideEntries.length===0) {
-    html += '<div class="empty-msg" style="padding:16px 0;">선택된 놀이기구가 없어요</div>';
-  } else {
-    // 많이 선택된 순 정렬
-    rideEntries.sort((a,b) => rideMap[b.name].length - rideMap[a.name].length);
-    html += rideEntries.map(r => {
-      const who = rideMap[r.name];
-      const together = who.length > 1;
-      return `<div class="ride-who-row">
-        <div class="ride-who-top">
-          <span class="ride-who-name">${r.name}</span>
-          <span class="ride-type${r.type==='basic'?' basic':''}">${r.type==='special'?'특화':'기본'}</span>
-          ${together ? `<span class="together-badge">같이 타요 ${who.length}명</span>` : ''}
-        </div>
-        <div class="ride-who-people">${who.map(n=>`<span class="people-chip">${n}</span>`).join('')}</div>
-      </div>`;
-    }).join('');
-  }
+  html += '<span style="font-size:12px;display:flex;align-items:center;gap:4px;margin-left:auto;"><span style="display:inline-block;width:14px;height:14px;background:#edeaff;border-radius:2px;border:1px solid #c5c0f0;"></span>탑승 가능</span>';
   html += '</div>';
+
+  // 어트랙션 × 패스 표
+  const PASS_KEYS = ['light','stdA','stdB','premium'];
+  const PASS_LABELS = ['Light','Std A','Std B','Premium'];
+
+  // 각 사람이 선택한 항목 맵
+  const picksMap = [0,1,2,3].map(i => new Set(sessionData[`p${i}`].picks||[]));
+  // 패스별 커버 가능 어트랙션 셋
+  const passCovers = PASS_KEYS.map(k => new Set([
+    ...SPECIAL.filter(s=>s[k]).map(s=>s.name),
+    ...BASIC
+  ]));
+
+  html += '<div style="overflow-x:auto;">';
+  html += `<table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:6px 4px;background:#f5f5f0;border-bottom:1px solid #e8e8e3;width:38%;">어트랙션</th>
+        ${PASS_LABELS.map(l=>`<th style="padding:6px 2px;background:#f5f5f0;border-bottom:1px solid #e8e8e3;text-align:center;">${l}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>`;
+
+  // 특화 먼저, 기본 다음
+  const grouped = [
+    { label:'특화', rides: SPECIAL.map(s=>s.name) },
+    { label:'기본', rides: BASIC }
+  ];
+
+  grouped.forEach(g => {
+    html += `<tr><td colspan="5" style="padding:5px 4px 2px;font-size:10px;font-weight:600;color:#888;background:#fafaf8;border-bottom:1px solid #f0f0ec;">${g.label} 어트랙션</td></tr>`;
+    g.rides.forEach(rideName => {
+      // 이 놀이기구를 선택한 사람
+      const choosers = [0,1,2,3].filter(i => picksMap[i].has(rideName));
+      html += '<tr>';
+      html += `<td style="padding:5px 4px;border-bottom:1px solid #f5f5f5;font-size:11px;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${rideName}">${rideName}</td>`;
+      PASS_KEYS.forEach((pk, pi) => {
+        const covered = passCovers[pi].has(rideName);
+        const bg = covered ? 'background:#edeaff;' : 'background:#fafafa;';
+        const borderColor = covered ? '#c5c0f0' : '#f0f0ec';
+        // 이 칸에서 선택한 사람 표시
+        const symbols = choosers.map(i =>
+          `<span style="color:${PERSON_COLORS[i]};font-size:11px;line-height:1;">${PERSON_SHAPES[i]}</span>`
+        ).join('');
+        html += `<td style="padding:4px 2px;border-bottom:1px solid ${borderColor};${bg}text-align:center;vertical-align:middle;">
+          ${symbols || (covered ? '<span style="color:#c5c0f0;font-size:9px;">·</span>' : '')}
+        </td>`;
+      });
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table></div>';
   document.getElementById('result-content').innerHTML = html;
 };
 </script>
