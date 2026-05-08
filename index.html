@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>롯데월드 매직패스 도우미</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
+.app { max-width: 480px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 18px; font-weight: 600; text-align: center; padding: 16px 0 2px; }
+.subtitle { font-size: 12px; color: #888; text-align: center; margin-bottom: 16px; }
+
+/* 초대코드 화면 */
+#invite-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; gap: 12px; }
+#invite-screen h2 { font-size: 16px; font-weight: 500; }
+#invite-screen p { font-size: 13px; color: #888; }
+#invite-input { width: 100%; max-width: 280px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; text-align: center; font-family: inherit; outline: none; }
+#invite-input:focus { border-color: #534AB7; }
+#invite-btn { width: 100%; max-width: 280px; padding: 12px; background: #534AB7; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; }
+#invite-btn:hover { background: #3C3489; }
+#invite-error { font-size: 13px; color: #E24B4A; display: none; }
+
+/* 메인 앱 */
+#main-app { display: none; }
+.session-badge { text-align: center; font-size: 11px; color: #888; margin-bottom: 12px; }
+.session-badge span { background: #EEEDFE; color: #534AB7; padding: 2px 10px; border-radius: 20px; font-weight: 500; }
+
+.tab-bar { display: flex; gap: 4px; margin-bottom: 16px; background: #e8e8e3; border-radius: 10px; padding: 4px; }
+.tab { flex: 1; padding: 8px 4px; border-radius: 8px; border: none; font-size: 13px; cursor: pointer; background: transparent; color: #666; font-family: inherit; transition: all 0.15s; }
+.tab.active { background: #fff; color: #1a1a1a; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+.section-title { font-size: 15px; font-weight: 500; margin-bottom: 10px; }
+
+/* 패스 카드 */
+.pass-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+.pass-card { background: #fff; border: 1px solid #e8e8e3; border-radius: 12px; padding: 12px; }
+.pass-card.premium { border: 1.5px solid #7F77DD; }
+.pass-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.pass-sub { font-size: 11px; color: #888; margin-bottom: 8px; }
+.badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 6px; margin-bottom: 6px; font-weight: 500; }
+.badge-light { background: #EAF3DE; color: #3B6D11; }
+.badge-a { background: #E6F1FB; color: #185FA5; }
+.badge-b { background: #FAEEDA; color: #854F0B; }
+.badge-premium { background: #EEEDFE; color: #3C3489; }
+.special-list { font-size: 11px; color: #555; }
+.special-item { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 2px; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: #7F77DD; margin-top: 4px; flex-shrink: 0; }
+.no-repeat { color: #E24B4A; font-size: 9px; display: block; }
+.divider { border: none; border-top: 1px solid #e8e8e3; margin: 16px 0; }
+
+/* 비교 테이블 */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th { background: #f5f5f0; color: #666; padding: 7px 4px; text-align: center; font-weight: 500; border-bottom: 1px solid #e8e8e3; }
+td { padding: 6px 4px; text-align: center; border-bottom: 1px solid #f0f0ec; vertical-align: middle; }
+td.ride-name { text-align: left; font-size: 11px; color: #1a1a1a; padding-left: 0; }
+.check-o { color: #639922; font-size: 14px; }
+.check-x { color: #ccc; font-size: 12px; }
+.nr { color: #E24B4A; font-size: 9px; display: block; }
+.note { font-size: 10px; color: #aaa; margin-top: 6px; }
+
+/* 탑승 선택 */
+.person-bar { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.person-btn { padding: 7px 16px; border-radius: 20px; border: 1px solid #ddd; font-size: 13px; cursor: pointer; background: #fff; color: #666; font-family: inherit; transition: all 0.15s; }
+.person-btn.sel { background: #534AB7; color: #fff; border-color: #534AB7; font-weight: 500; }
+.person-name-input { width: 100%; padding: 8px 12px; border: 1px solid #e8e8e3; border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; margin-bottom: 12px; }
+.person-name-input:focus { border-color: #534AB7; }
+.ride-check-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.ride-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #fff; border: 1px solid #e8e8e3; border-radius: 10px; cursor: pointer; transition: all 0.1s; }
+.ride-row.checked { background: #f0effe; border-color: #c5c0f0; }
+.ride-row-name { font-size: 13px; flex: 1; }
+.ride-type { font-size: 10px; color: #534AB7; background: #EEEDFE; padding: 2px 6px; border-radius: 6px; flex-shrink: 0; }
+.ride-type.basic { color: #888; background: #f0f0ec; }
+.checkbox { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid #ccc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.1s; }
+.checkbox.on { background: #534AB7; border-color: #534AB7; }
+.sync-status { font-size: 11px; color: #888; text-align: center; margin-bottom: 8px; min-height: 16px; }
+
+/* 결과 */
+.result-card { background: #fff; border: 1px solid #e8e8e3; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.result-label { font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; }
+.result-score { font-size: 14px; font-weight: 600; color: #1a1a1a; display: flex; align-items: center; gap: 6px; }
+.best-badge { background: #534AB7; color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+.person-summary { background: #fff; border: 1px solid #e8e8e3; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.person-summary-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.person-summary-rides { font-size: 11px; color: #666; line-height: 1.6; }
+.empty-msg { text-align: center; color: #aaa; font-size: 13px; padding: 32px 0; }
+.refresh-btn { width: 100%; padding: 10px; background: #f5f5f0; border: 1px solid #e8e8e3; border-radius: 10px; font-size: 13px; color: #555; cursor: pointer; font-family: inherit; margin-bottom: 12px; }
+.refresh-btn:hover { background: #eee; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <h1>🎢 롯데월드 매직패스</h1>
+  <p class="subtitle">4명이 함께 최적의 패스를 골라보세요</p>
+
+  <!-- 초대코드 화면 -->
+  <div id="invite-screen">
+    <h2>초대 코드를 입력하세요</h2>
+    <p>친구에게 받은 코드를 입력해 주세요</p>
+    <input id="invite-input" type="text" placeholder="초대 코드" autocomplete="off" />
+    <div id="invite-error">올바르지 않은 초대 코드예요</div>
+    <button id="invite-btn">입장하기</button>
+    <p style="font-size:11px;color:#bbb;margin-top:8px;">코드가 없다면 방장에게 문의하세요</p>
+  </div>
+
+  <!-- 메인 앱 -->
+  <div id="main-app">
+    <div class="session-badge">세션: <span id="session-label"></span></div>
+
+    <div class="tab-bar">
+      <button class="tab active" onclick="showTab('compare')">패스 비교</button>
+      <button class="tab" onclick="showTab('pick')">탑승 선택</button>
+      <button class="tab" onclick="showTab('result')">추천 결과</button>
+    </div>
+
+    <!-- 패스 비교 탭 -->
+    <div id="tab-compare">
+      <p class="section-title">매직패스 한눈에 비교</p>
+      <div class="pass-grid">
+        <div class="pass-card">
+          <span class="badge badge-light">Light</span>
+          <div class="pass-name">매직패스 Light</div>
+          <div class="pass-sub">32종 중 5기종 선택</div>
+          <div class="special-list">
+            <div style="font-size:10px;color:#aaa;margin-bottom:3px;">특화 어트랙션</div>
+            <div class="special-item"><span class="dot"></span><span>스톤익스프레스</span></div>
+            <div class="special-item"><span class="dot"></span><span>에오스타워</span></div>
+            <div class="special-item"><span class="dot"></span><span>아르카나라이드</span></div>
+          </div>
+        </div>
+        <div class="pass-card">
+          <span class="badge badge-a">Standard A</span>
+          <div class="pass-name">Standard A</div>
+          <div class="pass-sub">35종 중 5기종 선택</div>
+          <div class="special-list">
+            <div style="font-size:10px;color:#aaa;margin-bottom:3px;">특화 어트랙션</div>
+            <div class="special-item"><span class="dot"></span><span>아트란티스 <span class="no-repeat">1회만</span></span></div>
+            <div class="special-item"><span class="dot"></span><span>후룸라이드 <span class="no-repeat">1회만</span></span></div>
+            <div class="special-item"><span class="dot"></span><span>자이로스윙</span></div>
+            <div class="special-item"><span class="dot"></span><span>신밧드의 모험</span></div>
+            <div class="special-item"><span class="dot"></span><span>자이로스핀</span></div>
+            <div class="special-item"><span class="dot"></span><span>자이로드롭</span></div>
+          </div>
+        </div>
+        <div class="pass-card">
+          <span class="badge badge-b">Standard B</span>
+          <div class="pass-name">Standard B</div>
+          <div class="pass-sub">35종 중 5기종 선택</div>
+          <div class="special-list">
+            <div style="font-size:10px;color:#aaa;margin-bottom:3px;">특화 어트랙션</div>
+            <div class="special-item"><span class="dot"></span><span>혜성특급 <span class="no-repeat">1회만</span></span></div>
+            <div class="special-item"><span class="dot"></span><span>후렌치레볼루션 <span class="no-repeat">1회만</span></span></div>
+            <div class="special-item"><span class="dot"></span><span>스페인해적선</span></div>
+            <div class="special-item"><span class="dot"></span><span>신밧드의 모험</span></div>
+            <div class="special-item"><span class="dot"></span><span>자이로스핀</span></div>
+            <div class="special-item"><span class="dot"></span><span>자이로드롭</span></div>
+          </div>
+        </div>
+        <div class="pass-card premium">
+          <span class="badge badge-premium">Premium</span>
+          <div class="pass-name">매직패스 Premium</div>
+          <div class="pass-sub">42종 중 5기종 선택</div>
+          <div class="special-list">
+            <div style="font-size:10px;color:#aaa;margin-bottom:3px;">특화 어트랙션 13종</div>
+            <div class="special-item"><span class="dot"></span><span>혜성특급 / 후렌치레볼루션 / 아트란티스 / 후룸라이드 / 파라오의 분노 <span class="no-repeat">각 1회만</span></span></div>
+            <div class="special-item"><span class="dot"></span><span>스페인해적선, 자이로스윙, 신밧드의 모험, 자이로스핀, 자이로드롭, 스톤익스프레스, 에오스타워, 아르카나라이드</span></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <p class="section-title" style="margin-bottom:8px;">특화 어트랙션 패스별 포함 여부</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;">어트랙션</th>
+              <th>Light</th>
+              <th>Std A</th>
+              <th>Std B</th>
+              <th>Premium</th>
+            </tr>
+          </thead>
+          <tbody id="compare-body"></tbody>
+        </table>
+      </div>
+      <p class="note"><span style="color:#E24B4A;">빨간 글씨</span> = 중복탑승 불가 (1회만)</p>
+    </div>
+
+    <!-- 탑승 선택 탭 -->
+    <div id="tab-pick" style="display:none;">
+      <p class="section-title">내 이름과 타고 싶은 놀이기구 선택</p>
+      <div class="person-bar" id="person-bar"></div>
+      <input class="person-name-input" id="person-name-input" type="text" placeholder="이름을 입력하세요 (예: 민준)" maxlength="8" />
+      <div class="sync-status" id="sync-status"></div>
+      <div class="ride-check-list" id="ride-list"></div>
+    </div>
+
+    <!-- 추천 결과 탭 -->
+    <div id="tab-result" style="display:none;">
+      <button class="refresh-btn" onclick="buildResult()">🔄 최신 데이터로 새로고침</button>
+      <div id="result-content"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── 설정 ──────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCiA_b_1mdE38ZPATsNfMXWUSJ6UWfxSRQ",
+  authDomain: "lotteworld-magicpass.firebaseapp.com",
+  databaseURL: "https://lotteworld-magicpass-default-rtdb.firebaseio.com",
+  projectId: "lotteworld-magicpass",
+  storageBucket: "lotteworld-magicpass.firebasestorage.app",
+  messagingSenderId: "737771047601",
+  appId: "1:737771047601:web:8c6fadf04154e032aa3090"
+};
+
+// 초대 코드는 Firebase DB에서 검증 (소스에 코드 없음)
+
+// ── 데이터 ────────────────────────────────────────
+const SPECIAL = [
+  { name:'스톤익스프레스', light:true,  stdA:false, stdB:false, premium:true,  noRepeat:{} },
+  { name:'에오스타워',     light:true,  stdA:false, stdB:false, premium:true,  noRepeat:{} },
+  { name:'아르카나라이드', light:true,  stdA:false, stdB:false, premium:true,  noRepeat:{} },
+  { name:'아트란티스',     light:false, stdA:true,  stdB:false, premium:true,  noRepeat:{stdA:true,premium:true} },
+  { name:'후룸라이드',     light:false, stdA:true,  stdB:false, premium:true,  noRepeat:{stdA:true,premium:true} },
+  { name:'자이로스윙',     light:false, stdA:true,  stdB:false, premium:true,  noRepeat:{} },
+  { name:'신밧드의 모험',  light:false, stdA:true,  stdB:true,  premium:true,  noRepeat:{} },
+  { name:'자이로스핀',     light:false, stdA:true,  stdB:true,  premium:true,  noRepeat:{} },
+  { name:'자이로드롭',     light:false, stdA:true,  stdB:true,  premium:true,  noRepeat:{} },
+  { name:'혜성특급',       light:false, stdA:false, stdB:true,  premium:true,  noRepeat:{stdB:true,premium:true} },
+  { name:'후렌치레볼루션', light:false, stdA:false, stdB:true,  premium:true,  noRepeat:{stdB:true,premium:true} },
+  { name:'스페인해적선',   light:false, stdA:false, stdB:true,  premium:true,  noRepeat:{} },
+  { name:'파라오의 분노',  light:false, stdA:false, stdB:false, premium:true,  noRepeat:{premium:true} },
+];
+const BASIC = ['풍선비행','월드모노레일','황야의무법자','플라이벤처','환타지드림','4D슈팅시어터','회전목마','매직붕붕카','회전바구니','드래곤와일드슈팅','동화극장','카트라이더 레이싱 월드','배틀그라운드','범퍼카','어크로스다크','와일드윙','와일드정글','와일드밸리','점핑피쉬','드림보트','어린이범퍼카','키즈토리아','언더씽킹덤','유레카','스윙팡팡','뽀디빵빵','햇님달님'];
+const ALL_RIDES = [...SPECIAL.map(s=>({name:s.name,type:'special'})), ...BASIC.map(b=>({name:b,type:'basic'}))];
+
+// ── 상태 ──────────────────────────────────────────
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+let sessionCode = '';
+let curSlot = 0; // 0~3
+let sessionData = { p0:{name:'1번',picks:[]}, p1:{name:'2번',picks:[]}, p2:{name:'3번',picks:[]}, p3:{name:'4번',picks:[]} };
+let unsubscribe = null;
+
+// ── 초대코드 ──────────────────────────────────────
+document.getElementById('invite-btn').onclick = enterSession;
+document.getElementById('invite-input').addEventListener('keydown', e => { if(e.key==='Enter') enterSession(); });
+
+async function enterSession() {
+  const code = document.getElementById('invite-input').value.trim();
+  if(!code) return;
+  const btn = document.getElementById('invite-btn');
+  btn.textContent = '확인 중...';
+  btn.disabled = true;
+  try {
+    const snap = await get(ref(db, `invite_codes/${code}`));
+    if(!snap.exists() || snap.val() !== true) {
+      document.getElementById('invite-error').style.display = 'block';
+      btn.textContent = '입장하기';
+      btn.disabled = false;
+      return;
+    }
+    sessionCode = code;
+    document.getElementById('invite-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    document.getElementById('session-label').textContent = code;
+    buildCompare();
+    startSync();
+    showTab('compare');
+  } catch(e) {
+    document.getElementById('invite-error').textContent = '네트워크 오류가 발생했어요. 다시 시도해 주세요.';
+    document.getElementById('invite-error').style.display = 'block';
+    btn.textContent = '입장하기';
+    btn.disabled = false;
+  }
+}
+
+// ── Firebase 실시간 동기화 ─────────────────────────
+function startSync() {
+  const sessionRef = ref(db, `sessions/${sessionCode}`);
+  onValue(sessionRef, snap => {
+    if(snap.exists()) {
+      const data = snap.val();
+      for(let i=0;i<4;i++) {
+        if(data[`p${i}`]) sessionData[`p${i}`] = data[`p${i}`];
+      }
+    }
+    refreshCurrentTab();
+  });
+}
+
+function saveMySlot() {
+  const slotRef = ref(db, `sessions/${sessionCode}/p${curSlot}`);
+  set(slotRef, sessionData[`p${curSlot}`]);
+  document.getElementById('sync-status').textContent = '저장됨 ✓';
+  setTimeout(()=>{ document.getElementById('sync-status').textContent = ''; }, 2000);
+}
+
+// ── 탭 ────────────────────────────────────────────
+function refreshCurrentTab() {
+  const tabs = ['compare','pick','result'];
+  const active = tabs.find(t => document.getElementById('tab-'+t).style.display !== 'none');
+  if(active === 'pick') buildRideList();
+  if(active === 'result') buildResult();
+  if(active === 'compare') buildPersonBar();
+}
+
+window.showTab = function(name) {
+  ['compare','pick','result'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['compare','pick','result'][i]===name);
+  });
+  if(name==='pick') buildRideList();
+  if(name==='result') buildResult();
+};
+
+// ── 비교 탭 ───────────────────────────────────────
+function buildCompare() {
+  const body = document.getElementById('compare-body');
+  body.innerHTML = SPECIAL.map(s => {
+    const cell = (has, noR) => has
+      ? `<td><span class="check-o">✓</span>${noR?'<span class="nr">1회</span>':''}</td>`
+      : `<td><span class="check-x">—</span></td>`;
+    return `<tr>
+      <td class="ride-name">${s.name}</td>
+      ${cell(s.light,false)}
+      ${cell(s.stdA,s.noRepeat.stdA)}
+      ${cell(s.stdB,s.noRepeat.stdB)}
+      ${cell(s.premium,s.noRepeat.premium)}
+    </tr>`;
+  }).join('');
+}
+
+function buildPersonBar() {}
+
+// ── 탑승 선택 탭 ──────────────────────────────────
+function buildRideList() {
+  // 슬롯 버튼
+  const bar = document.getElementById('person-bar');
+  bar.innerHTML = [0,1,2,3].map(i => {
+    const nm = sessionData[`p${i}`].name || `${i+1}번`;
+    return `<button class="person-btn${i===curSlot?' sel':''}" onclick="selectSlot(${i})">${nm}</button>`;
+  }).join('');
+
+  // 이름 입력
+  const nameInput = document.getElementById('person-name-input');
+  nameInput.value = sessionData[`p${curSlot}`].name || '';
+  nameInput.oninput = () => {
+    sessionData[`p${curSlot}`].name = nameInput.value || `${curSlot+1}번`;
+    saveMySlot();
+    // 버튼 텍스트 즉시 갱신
+    bar.querySelectorAll('.person-btn')[curSlot].textContent = nameInput.value || `${curSlot+1}번`;
+  };
+
+  // 놀이기구 목록
+  const picks = sessionData[`p${curSlot}`].picks || [];
+  document.getElementById('ride-list').innerHTML = ALL_RIDES.map(r => {
+    const checked = picks.includes(r.name);
+    return `<div class="ride-row${checked?' checked':''}" onclick="toggleRide('${r.name.replace(/'/g,"\\'")}')">
+      <div class="checkbox${checked?' on':''}">${checked?'<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</div>
+      <span class="ride-row-name">${r.name}</span>
+      <span class="ride-type${r.type==='basic'?' basic':''}">${r.type==='special'?'특화':'기본'}</span>
+    </div>`;
+  }).join('');
+}
+
+window.selectSlot = function(n) {
+  curSlot = n;
+  buildRideList();
+};
+
+window.toggleRide = function(name) {
+  const picks = sessionData[`p${curSlot}`].picks || [];
+  const idx = picks.indexOf(name);
+  if(idx > -1) picks.splice(idx,1); else picks.push(name);
+  sessionData[`p${curSlot}`].picks = picks;
+  saveMySlot();
+  buildRideList();
+};
+
+// ── 추천 결과 탭 ──────────────────────────────────
+window.buildResult = function() {
+  const passes = [
+    {key:'light',  label:'Light',      cls:'badge-light'},
+    {key:'stdA',   label:'Standard A', cls:'badge-a'},
+    {key:'stdB',   label:'Standard B', cls:'badge-b'},
+    {key:'premium',label:'Premium',    cls:'badge-premium'},
+  ];
+
+  const specialNames = k => SPECIAL.filter(s=>s[k]).map(s=>s.name);
+  const scores = passes.map(p => {
+    const sn = specialNames(p.key);
+    let total = 0;
+    for(let i=0;i<4;i++) {
+      (sessionData[`p${i}`].picks||[]).forEach(r => {
+        if(sn.includes(r)||BASIC.includes(r)) total++;
+      });
+    }
+    return {...p, score: total};
+  });
+  const maxScore = Math.max(...scores.map(s=>s.score));
+  const totalPicks = [0,1,2,3].reduce((a,i)=>a+(sessionData[`p${i}`].picks||[]).length,0);
+
+  let html = '';
+  if(totalPicks === 0) {
+    html = '<div class="empty-msg">아직 아무도 놀이기구를 선택하지 않았어요!<br>탑승 선택 탭에서 먼저 골라보세요.</div>';
+  } else {
+    html += `<p style="font-size:12px;color:#888;margin-bottom:10px;">총 ${totalPicks}개의 탑승 희망 선택됨</p>`;
+    html += '<div class="result-card">';
+    html += '<p style="font-size:13px;font-weight:500;margin-bottom:10px;">패스별 커버 가능 탑승 수</p>';
+    scores.forEach(s => {
+      const isTop = s.score === maxScore && maxScore > 0;
+      html += `<div class="result-row">
+        <span class="result-label"><span class="badge ${s.cls}">${s.label}</span></span>
+        <span class="result-score">${s.score}개 ${isTop?'<span class="best-badge">추천</span>':''}</span>
+      </div>`;
+    });
+    html += '</div>';
+
+    html += '<p style="font-size:13px;font-weight:500;margin-bottom:8px;">각자의 선택</p>';
+    for(let i=0;i<4;i++) {
+      const p = sessionData[`p${i}`];
+      const picks = p.picks || [];
+      html += `<div class="person-summary">
+        <div class="person-summary-name">${p.name || `${i+1}번`} <span style="font-size:11px;color:#aaa;font-weight:400;">(${picks.length}개)</span></div>
+        <div class="person-summary-rides">${picks.length > 0 ? picks.join(', ') : '선택 없음'}</div>
+      </div>`;
+    }
+  }
+  document.getElementById('result-content').innerHTML = html;
+};
+</script>
+</body>
+</html>
