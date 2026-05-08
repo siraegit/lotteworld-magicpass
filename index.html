@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>롯데월드 매직패스 도우미</title>
+<title>롯데월드 매직패스 선택 도우미</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
@@ -454,10 +454,14 @@ window.buildResult = function() {
   </tr></thead><tbody>`;
 
   // 특화
-  html += `<tr class="group-header"><td colspan="5">▸ 특화 어트랙션</td></tr>`;
+  html += `<tr class="group-header"><td colspan="5" style="position:relative;text-align:center;">
+  <span style="position:absolute;left:4px;color:#E24B4A;font-weight:400;font-size:10px;"><span style="color:#E24B4A;">*</span> 1회만 탑승 가능</span>
+  ▸ 특화 어트랙션
+</td></tr>`;
   SPECIAL.forEach(s => {
+    const hasNoRepeat = Object.keys(s.noRepeat).length > 0;
     html += '<tr>';
-    html += `<td class="rn2" title="${s.name}">${s.name}</td>`;
+    html += `<td class="rn2" title="${s.name}">${s.name}${hasNoRepeat ? '<span style="color:#E24B4A;font-size:10px;"> *</span>' : ''}</td>`;    
     PASSES.forEach(p => {
       const covered = PASS_COVERS[p.key].has(s.name);
       const choosers = [0,1,2,3].filter(i => picksMap[i].has(s.name));
@@ -486,7 +490,7 @@ window.buildResult = function() {
   });
 
   html += '</tbody></table></div>';
-  html += '<p class="note" style="margin-bottom:16px;">기본 어트랙션은 선택한 사람이 있는 것만 표시해요</p>';
+  html += '<p class="note" style="margin-bottom:16px;">기본 어트랙션은 선택한 사람이 있는 것만 표시 &nbsp;|&nbsp; <span style="color:#E24B4A;">*</span> 해당 패스에서 1회만 탑승 가능</p>';
 
   document.getElementById('result-content').innerHTML = html;
 };
